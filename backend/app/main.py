@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import asyncio
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -62,3 +63,8 @@ app.include_router(router)
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+FRONTEND_BUILD_DIR = Path(__file__).resolve().parent.parent / "static"
+if FRONTEND_BUILD_DIR.is_dir():
+    app.frontend("/", directory=FRONTEND_BUILD_DIR)

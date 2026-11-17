@@ -145,7 +145,8 @@ flowchart LR
 
 ```text
 questionary_to_json/
-├── docker-compose.yml         # Orquestación de contenedores Backend + Frontend
+├── Dockerfile                 # Imagen multi-stage unificada (compila Next.js y sirve todo desde FastAPI)
+├── docker-compose.yml         # Levanta la aplicacion completa (UI + API) en el puerto 8000
 ├── README.md                  # Documentación técnica, arquitectura y supuestos
 ├── examples/                  # Cuestionarios de prueba (.pdf, .docx, .xlsx) y sus .json resultantes
 │   ├── questionario_esempio_it.pdf
@@ -155,7 +156,6 @@ questionary_to_json/
 │   ├── cognitive_assessment_en.xlsx
 │   └── cognitive_assessment_en.json
 ├── frontend/                  # Aplicación Web en Next.js 15 (App Router + TypeScript + Tailwind)
-│   ├── Dockerfile
 │   ├── .env.example
 │   └── src/
 │       ├── app/               # Vista principal de carga, estado de documentos y resultados
@@ -163,9 +163,8 @@ questionary_to_json/
 │       ├── lib/api.ts         # Capa centralizada y desacoplada de consumo de la API Backend
 │       └── types/             # Contratos TypeScript espejo de los modelos Pydantic
 └── backend/                   # API REST y Workers en Python 3.11+ y FastAPI
-    ├── Dockerfile
     ├── pyproject.toml         # Configuración de dependencias (uv), FastAPI CLI y Pytest
-    ├── requirements.txt       # Dependencias exportadas para pip / PaaS
+    ├── requirements.txt       # Dependencias exportadas para pip / Docker
     ├── .env.example
     ├── app/
     │   ├── main.py            # Entrypoint FastAPI, lifespan de workers, CORS y exception handlers
@@ -299,9 +298,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Instrucciones de Instalación y Ejecución Local
 
-### Opción 1: Ejecución con Docker Compose (Recomendada)
+### Opción 1: Ejecución Unificada con Docker (Recomendada)
 
-Levanta el Backend (`:8000`) y el Frontend (`:3000`) con un solo comando:
+El `Dockerfile` raíz utiliza un *multi-stage build* que compila estáticamente la aplicación Next.js (`output: "export"`) y la sirve directamente desde FastAPI mediante `app.frontend("/", directory=...)` en un único contenedor y puerto (`:8000`):
 
 ```bash
 git clone <URL_DEL_REPOSITORIO>
@@ -312,8 +311,8 @@ cp backend/.env.example backend/.env
 
 docker compose up --build
 ```
-- **Aplicación Web (Frontend):** [http://localhost:3000](http://localhost:3000)
-- **API & Swagger UI (Backend):** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Aplicación Web (Frontend + API unificados):** [http://localhost:8000](http://localhost:8000)
+- **Swagger UI (OpenAPI):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
