@@ -28,45 +28,45 @@ El sistema está construido bajo los principios de **Arquitectura Hexagonal (Pue
 
 ```mermaid
 flowchart TB
-    subgraph Client ["Capa de Presentación (Next.js 15 + TypeScript)"]
-        UI["Interfaz de Digitalización e Inspector de Ítems"]
+    subgraph Client ["Capa de Presentacion (Next.js 15 + TypeScript)"]
+        UI["Interfaz de Digitalizacion e Inspector de Items"]
         APIClient["Cliente HTTP Aislado (src/lib/api.ts)"]
         UI --> APIClient
     end
 
     subgraph API ["Capa de Entrada HTTP (app/api/)"]
         Routes["FastAPI Router (/api/v1/questionnaires)"]
-        Deps["Inyección de Dependencias (Annotated + @lru_cache)"]
-        ErrHandler["Exception Handler Global (DomainError -> HTTP)"]
+        Deps["Inyeccion de Dependencias (Annotated + lru_cache)"]
+        ErrHandler["Exception Handler Global (DomainError a HTTP)"]
     end
 
-    subgraph Core ["Núcleo de Aplicación y Dominio (app/services/ & app/domain/)"]
+    subgraph Core ["Nucleo de Aplicacion y Dominio (app/services/ y app/domain/)"]
         Worker["ExtractionWorker (Pool Concurrente)"]
-        ParserSvc["ParserService (Validación y Enrutamiento)"]
+        ParserSvc["ParserService (Validacion y Enrutamiento)"]
         Ports["Contratos / Protocolos (DocumentParserPort, LLMExtractorPort, JobQueuePort)"]
         Schemas["Esquemas Pydantic v2 (QuestionnaireOutput, QuestionItemSchema)"]
     end
 
     subgraph Adapters ["Capa de Infraestructura / Adaptadores (app/adapters/)"]
         PDF["PdfParser (pypdf)"]
-        DOCX["DocxParser (python-docx: párrafos + tablas)"]
+        DOCX["DocxParser (python-docx: parrafos + tablas)"]
         XLSX["XlsxParser (openpyxl: hojas + filas)"]
         Gemini["GeminiExtractorAdapter (Structured Outputs + Fallback)"]
         MemQueue["InMemoryJobQueue (asyncio.Queue)"]
     end
 
-    APIClient -->|REST / Multipart| Routes
+    APIClient -->|REST Multipart| Routes
     Routes --> Deps
     Routes --> ParserSvc
     Routes --> MemQueue
     Worker --> ParserSvc
     Worker --> Ports
     ParserSvc --> Ports
-    PDF -. "Implementa" .-> Ports
-    DOCX -. "Implementa" .-> Ports
-    XLSX -. "Implementa" .-> Ports
-    Gemini -. "Implementa" .-> Ports
-    MemQueue -. "Implementa" .-> Ports
+    PDF -.->|Implementa| Ports
+    DOCX -.->|Implementa| Ports
+    XLSX -.->|Implementa| Ports
+    Gemini -.->|Implementa| Ports
+    MemQueue -.->|Implementa| Ports
     Gemini --> Schemas
 ```
 
@@ -80,43 +80,43 @@ Para evitar bloqueos HTTP cuando el usuario carga múltiples cuestionarios exten
 sequenceDiagram
     autonumber
     actor User as Usuario
-    participant UI as Frontend (Next.js)
-    participant API as FastAPI (routes.py)
+    participant UI as Frontend Next.js
+    participant API as FastAPI routes.py
     participant Queue as InMemoryJobQueue
     participant Worker as ExtractionWorker Pool
-    participant Parser as ParserService (.pdf/.docx/.xlsx)
+    participant Parser as ParserService
     participant LLM as GeminiExtractorAdapter
 
     User->>UI: Adjunta 1 o N archivos (.pdf, .docx, .xlsx)
-    UI->>API: POST /api/v1/questionnaires/jobs (multipart/form-data)
+    UI->>API: POST /api/v1/questionnaires/jobs
     API->>Parser: validate_file(bytes, filename)
-    alt Archivo inválido, vacío (0B) o excede tamaño máximo
-        Parser-->>API: Lanza DomainError (UnsupportedFileFormat / Empty / TooLarge)
+    alt Archivo invalido, vacio o excede limite
+        Parser-->>API: Lanza DomainError
         API-->>UI: 400 / 413 / 422 JSON Error
-    else Archivos válidos
+    else Archivos validos
         API->>Queue: enqueue(job_id, filename, file_bytes)
-        Queue-->>API: ExtractionJob (status = "QUEUED")
-        API-->>UI: 202 Accepted [ExtractionJob, ...]
+        Queue-->>API: ExtractionJob (status QUEUED)
+        API-->>UI: 202 Accepted (Lista de ExtractionJob)
     end
 
     par Procesamiento Concurrente en Background
         Worker->>Queue: dequeue()
-        Worker->>Queue: mark_processing(job_id) ("PROCESSING")
-        Worker->>Parser: asyncio.to_thread(parse_document, bytes, filename)
+        Worker->>Queue: mark_processing(job_id)
+        Worker->>Parser: asyncio.to_thread(parse_document)
         Parser-->>Worker: raw_text (texto + tablas estructuradas)
         Worker->>LLM: extract_questionnaire(raw_text, filename)
-        LLM-->>Worker: QuestionnaireOutput (validado por Pydantic v2)
-        Worker->>Queue: mark_completed(job_id, result) ("COMPLETED")
+        LLM-->>Worker: QuestionnaireOutput validado
+        Worker->>Queue: mark_completed(job_id, result)
     end
 
-    loop Polling no bloqueante (Promise.all)
+    loop Polling paralelo cada 1.2s
         UI->>API: GET /api/v1/questionnaires/jobs/{job_id}
         API->>Queue: get_job(job_id)
         Queue-->>API: ExtractionJob
         API-->>UI: 200 OK (status + QuestionnaireOutput)
     end
 
-    User->>UI: Inspecciona ítems o descarga archivo .json
+    User->>UI: Inspecciona items o descarga archivo .json
 ```
 
 ---
@@ -125,17 +125,17 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    A["Archivo Binario (.pdf / .docx / .xlsx)"] --> B{"Validación Inicial"}
-    B -->|"Extensión inválida"| E1["400 UNSUPPORTED_FILE_FORMAT"]
-    B -->|"> MAX_FILE_SIZE_MB"| E2["413 FILE_TOO_LARGE"]
-    B -->|"0 bytes"| E3["422 EMPTY_DOCUMENT"]
-    B -->|"Válido"| C["Parser Específico por Formato"]
-    C -->|"Binario dañado"| E4["422 CORRUPTED_DOCUMENT"]
-    C -->|"Sin texto ni tablas"| E3
-    C -->|"Texto + Tablas"| D["Extracción con LLM (Structured Outputs)"]
-    D -->|"0 ítems detectados"| E5["422 NO_ITEMS_DETECTED"]
-    D -->|"Fallo de red / proveedor"| E6["502 LLM_EXTRACTION_ERROR"]
-    D -->|"JSON crudo"| F["Normalización Pydantic v2 (QuestionnaireOutput)"]
+    A["Archivo Binario (.pdf / .docx / .xlsx)"] --> B{"Validacion Inicial"}
+    B -->|Extension invalida| E1["400 UNSUPPORTED_FILE_FORMAT"]
+    B -->|Supera MAX_FILE_SIZE_MB| E2["413 FILE_TOO_LARGE"]
+    B -->|Archivo de 0 bytes| E3["422 EMPTY_DOCUMENT"]
+    B -->|Valido| C["Parser Especifico por Formato"]
+    C -->|Binario danado| E4["422 CORRUPTED_DOCUMENT"]
+    C -->|Sin texto ni tablas| E3
+    C -->|Texto + Tablas| D["Extraccion con LLM (Structured Outputs)"]
+    D -->|0 items detectados| E5["422 NO_ITEMS_DETECTED"]
+    D -->|Fallo de red o proveedor| E6["502 LLM_EXTRACTION_ERROR"]
+    D -->|JSON crudo| F["Normalizacion Pydantic v2"]
     F --> G["JSON Estandarizado Final"]
 ```
 
