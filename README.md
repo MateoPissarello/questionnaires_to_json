@@ -14,9 +14,9 @@ Aplicación web full-stack diseñada para digitalizar y estructurar automáticam
 
 | Componente | Plataforma | URL Pública |
 | :--- | :--- | :--- |
-| **Aplicación Web (Frontend)** | Vercel | `[PENDIENTE_URL_FRONTEND]` |
-| **API REST (Backend)** | Render / Railway | `[PENDIENTE_URL_BACKEND]` |
-| **Documentación OpenAPI (Swagger UI)** | FastAPI `/docs` | `[PENDIENTE_URL_BACKEND]/docs` |
+| **Aplicación Web Completa (Frontend + API Unificados)** | Render (Docker) | [https://questionnaires-to-json.onrender.com/](https://questionnaires-to-json.onrender.com/) |
+| **Documentación Interactiva OpenAPI (Swagger UI)** | FastAPI `/docs` | [https://questionnaires-to-json.onrender.com/docs](https://questionnaires-to-json.onrender.com/docs) |
+| **Health Check del Servicio** | FastAPI `/health` | [https://questionnaires-to-json.onrender.com/health](https://questionnaires-to-json.onrender.com/health) |
 
 ---
 
