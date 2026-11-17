@@ -1,160 +1,354 @@
 # Giunti Psychometrics — Digitalizador y Estructurador de Cuestionarios
 
-Aplicación web full-stack para extraer, clasificar y estructurar automáticamente cuestionarios psicométricos y pruebas de evaluación desde documentos **PDF (`.pdf`)**, **Word (`.docx`)** y **Excel (`.xlsx`)** hacia un esquema JSON estandarizado.
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.163%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Tests](https://img.shields.io/badge/Pytest-32%20passed-10B981?logo=pytest&logoColor=white)](#%EF%B8%8F-suite-de-pruebas-automatizadas-pytest)
+
+Aplicación web full-stack diseñada para digitalizar y estructurar automáticamente cuestionarios psicométricos y evaluaciones educativas desde documentos **PDF (`.pdf`)**, **Word (`.docx`)** y **Excel (`.xlsx`)** hacia un esquema JSON estandarizado y validado.
 
 ---
 
-## 🔗 Demo en Producción (Deploy)
+## 🌐 Demo Pública en Producción (Deploy)
 
-- **Aplicación Web (Frontend — Vercel):** `[PENDIENTE_URL_FRONTEND]`
-- **API & Documentación Interactiva Swagger (Backend — `/docs`):** `[PENDIENTE_URL_BACKEND]/docs`
+| Componente | Plataforma | URL Pública |
+| :--- | :--- | :--- |
+| **Aplicación Web (Frontend)** | Vercel | `[PENDIENTE_URL_FRONTEND]` |
+| **API REST (Backend)** | Render / Railway | `[PENDIENTE_URL_BACKEND]` |
+| **Documentación OpenAPI (Swagger UI)** | FastAPI `/docs` | `[PENDIENTE_URL_BACKEND]/docs` |
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## 🏛️ Arquitectura del Sistema
 
-El Backend fue diseñado siguiendo **Arquitectura Hexagonal (Puertos y Adaptadores)** y procesamiento asíncrono mediante **Cola de Trabajos + Pool de Workers Concurrentes**:
+El sistema está construido bajo los principios de **Arquitectura Hexagonal (Puertos y Adaptadores)** y **Procesamiento Asíncrono Desacoplado por Cola de Trabajos**. Esta separación garantiza que el núcleo de dominio (`domain/` y `services/`) sea 100% independiente del framework web, de las librerías de lectura binaria y del proveedor de IA.
+
+### 1. Diagrama de Componentes (Puertos y Adaptadores)
+
+```mermaid
+flowchart TB
+    subgraph Client ["Capa de Presentación (Next.js 15 + TypeScript)"]
+        UI["Interfaz de Digitalización e Inspector de Ítems"]
+        APIClient["Cliente HTTP Aislado (src/lib/api.ts)"]
+        UI --> APIClient
+    end
+
+    subgraph API ["Capa de Entrada HTTP (app/api/)"]
+        Routes["FastAPI Router (/api/v1/questionnaires)"]
+        Deps["Inyección de Dependencias (Annotated + @lru_cache)"]
+        ErrHandler["Exception Handler Global (DomainError -> HTTP)"]
+    end
+
+    subgraph Core ["Núcleo de Aplicación y Dominio (app/services/ & app/domain/)"]
+        Worker["ExtractionWorker (Pool Concurrente)"]
+        ParserSvc["ParserService (Validación y Enrutamiento)"]
+        Ports["Contratos / Protocolos (DocumentParserPort, LLMExtractorPort, JobQueuePort)"]
+        Schemas["Esquemas Pydantic v2 (QuestionnaireOutput, QuestionItemSchema)"]
+    end
+
+    subgraph Adapters ["Capa de Infraestructura / Adaptadores (app/adapters/)"]
+        PDF["PdfParser (pypdf)"]
+        DOCX["DocxParser (python-docx: párrafos + tablas)"]
+        XLSX["XlsxParser (openpyxl: hojas + filas)"]
+        Gemini["GeminiExtractorAdapter (Structured Outputs + Fallback)"]
+        MemQueue["InMemoryJobQueue (asyncio.Queue)"]
+    end
+
+    APIClient -->|REST / Multipart| Routes
+    Routes --> Deps
+    Routes --> ParserSvc
+    Routes --> MemQueue
+    Worker --> ParserSvc
+    Worker --> Ports
+    ParserSvc --> Ports
+    PDF -. "Implementa" .-> Ports
+    DOCX -. "Implementa" .-> Ports
+    XLSX -. "Implementa" .-> Ports
+    Gemini -. "Implementa" .-> Ports
+    MemQueue -. "Implementa" .-> Ports
+    Gemini --> Schemas
+```
+
+---
+
+### 2. Flujo de Procesamiento Asíncrono Concurrente (Cola + Workers)
+
+Para evitar bloqueos HTTP cuando el usuario carga múltiples cuestionarios extensos simultáneamente, el servidor gestiona una cola asíncrona (`InMemoryJobQueue`) consumida por un pool configurable de *workers* (`WORKER_CONCURRENCY`) inicializados durante el ciclo de vida (`lifespan`) de FastAPI:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Usuario
+    participant UI as Frontend (Next.js)
+    participant API as FastAPI (routes.py)
+    participant Queue as InMemoryJobQueue
+    participant Worker as ExtractionWorker Pool
+    participant Parser as ParserService (.pdf/.docx/.xlsx)
+    participant LLM as GeminiExtractorAdapter
+
+    User->>UI: Adjunta 1 o N archivos (.pdf, .docx, .xlsx)
+    UI->>API: POST /api/v1/questionnaires/jobs (multipart/form-data)
+    API->>Parser: validate_file(bytes, filename)
+    alt Archivo inválido, vacío (0B) o excede tamaño máximo
+        Parser-->>API: Lanza DomainError (UnsupportedFileFormat / Empty / TooLarge)
+        API-->>UI: 400 / 413 / 422 JSON Error
+    else Archivos válidos
+        API->>Queue: enqueue(job_id, filename, file_bytes)
+        Queue-->>API: ExtractionJob (status = "QUEUED")
+        API-->>UI: 202 Accepted [ExtractionJob, ...]
+    end
+
+    par Procesamiento Concurrente en Background
+        Worker->>Queue: dequeue()
+        Worker->>Queue: mark_processing(job_id) ("PROCESSING")
+        Worker->>Parser: asyncio.to_thread(parse_document, bytes, filename)
+        Parser-->>Worker: raw_text (texto + tablas estructuradas)
+        Worker->>LLM: extract_questionnaire(raw_text, filename)
+        LLM-->>Worker: QuestionnaireOutput (validado por Pydantic v2)
+        Worker->>Queue: mark_completed(job_id, result) ("COMPLETED")
+    end
+
+    loop Polling no bloqueante (Promise.all)
+        UI->>API: GET /api/v1/questionnaires/jobs/{job_id}
+        API->>Queue: get_job(job_id)
+        Queue-->>API: ExtractionJob
+        API-->>UI: 200 OK (status + QuestionnaireOutput)
+    end
+
+    User->>UI: Inspecciona ítems o descarga archivo .json
+```
+
+---
+
+### 3. Pipeline de Extracción, Inferencia y Validación de Esquema
+
+```mermaid
+flowchart LR
+    A["Archivo Binario (.pdf / .docx / .xlsx)"] --> B{"Validación Inicial"}
+    B -->|"Extensión inválida"| E1["400 UNSUPPORTED_FILE_FORMAT"]
+    B -->|"> MAX_FILE_SIZE_MB"| E2["413 FILE_TOO_LARGE"]
+    B -->|"0 bytes"| E3["422 EMPTY_DOCUMENT"]
+    B -->|"Válido"| C["Parser Específico por Formato"]
+    C -->|"Binario dañado"| E4["422 CORRUPTED_DOCUMENT"]
+    C -->|"Sin texto ni tablas"| E3
+    C -->|"Texto + Tablas"| D["Extracción con LLM (Structured Outputs)"]
+    D -->|"0 ítems detectados"| E5["422 NO_ITEMS_DETECTED"]
+    D -->|"Fallo de red / proveedor"| E6["502 LLM_EXTRACTION_ERROR"]
+    D -->|"JSON crudo"| F["Normalización Pydantic v2 (QuestionnaireOutput)"]
+    F --> G["JSON Estandarizado Final"]
+```
+
+---
+
+## 📂 Estructura del Monorepo
 
 ```text
 questionary_to_json/
+├── docker-compose.yml         # Orquestación de contenedores Backend + Frontend
+├── README.md                  # Documentación técnica, arquitectura y supuestos
 ├── examples/                  # Cuestionarios de prueba (.pdf, .docx, .xlsx) y sus .json resultantes
-├── frontend/                  # Next.js (App Router, TypeScript, Tailwind CSS)
+│   ├── questionario_esempio_it.pdf
+│   ├── questionario_esempio_it.json
+│   ├── cuestionario_psicometrico_es.docx
+│   ├── cuestionario_psicometrico_es.json
+│   ├── cognitive_assessment_en.xlsx
+│   └── cognitive_assessment_en.json
+├── frontend/                  # Aplicación Web en Next.js 15 (App Router + TypeScript + Tailwind)
+│   ├── Dockerfile
+│   ├── .env.example
 │   └── src/
-│       ├── app/               # Interfaz principal de carga y seguimiento
-│       ├── components/        # Inspector de ítems estructurados y visor JSON
-│       ├── lib/api.ts         # Capa aislada de consumo HTTP hacia FastAPI
-│       └── types/             # Contratos TypeScript alineados con Pydantic
-└── backend/                   # Python 3.11+ · FastAPI · Pydantic v2
+│       ├── app/               # Vista principal de carga, estado de documentos y resultados
+│       ├── components/        # QuestionnaireInspector (vista estructurada por tipo y visor JSON)
+│       ├── lib/api.ts         # Capa centralizada y desacoplada de consumo de la API Backend
+│       └── types/             # Contratos TypeScript espejo de los modelos Pydantic
+└── backend/                   # API REST y Workers en Python 3.11+ y FastAPI
+    ├── Dockerfile
+    ├── pyproject.toml         # Configuración de dependencias (uv), FastAPI CLI y Pytest
+    ├── requirements.txt       # Dependencias exportadas para pip / PaaS
+    ├── .env.example
     ├── app/
+    │   ├── main.py            # Entrypoint FastAPI, lifespan de workers, CORS y exception handlers
+    │   ├── config.py          # Configuración tipada con pydantic-settings
     │   ├── domain/
-    │   │   ├── schemas.py     # Modelos Pydantic (QuestionnaireOutput, QuestionItemSchema, ExtractionJob)
-    │   │   ├── exceptions.py  # Jerarquía de excepciones de dominio (DomainError)
-    │   │   └── ports.py       # Contratos (DocumentParserPort, LLMExtractorPort, JobQueuePort)
+    │   │   ├── schemas.py     # Modelos Pydantic v2 e invariantes de negocio
+    │   │   ├── exceptions.py  # Excepciones semánticas de dominio
+    │   │   └── ports.py       # Interfaces (Protocol) para Parsers, LLM y Cola
     │   ├── services/
-    │   │   ├── parser_service.py     # Validación de formato/tamaño y enrutamiento por extensión
-    │   │   └── extraction_worker.py  # Worker asíncrono consumidor de la cola
+    │   │   ├── parser_service.py     # Servicio validador y selector de estrategia de parsing
+    │   │   └── extraction_worker.py  # Consumidor asíncrono de trabajos de extracción
     │   ├── adapters/
-    │   │   ├── parsers/       # PdfParser (pypdf), DocxParser (python-docx), XlsxParser (openpyxl)
-    │   │   ├── llm/           # GeminiExtractorAdapter (Structured Outputs) y System Prompts
-    │   │   └── queue/         # InMemoryJobQueue (asyncio.Queue concurrente)
+    │   │   ├── parsers/       # pdf_parser.py, docx_parser.py, xlsx_parser.py
+    │   │   ├── llm/           # gemini_adapter.py y prompts.py
+    │   │   └── queue/         # memory_queue.py (InMemoryJobQueue)
     │   └── api/
-    │       ├── dependencies.py # Inyección de dependencias con Annotated y @lru_cache
-    │       └── routes.py       # Endpoints REST (/jobs, /jobs/{id}, /extract)
-    └── tests/                 # Suite de 32 pruebas automatizadas con Pytest
+    │       ├── dependencies.py # Proveedores singletons y alias Annotated[..., Depends(...)]
+    │       └── routes.py       # Endpoints HTTP (/jobs, /jobs/{job_id}, /extract)
+    └── tests/                 # Suite de 32 tests unitarios y de integración
+        ├── test_schemas.py
+        ├── test_validators_and_parsers.py
+        ├── test_llm_extractor.py
+        └── test_api.py
 ```
-
-### Flujo de Procesamiento
-1. **Validación Temprana (`ParserService`):** Verifica que la extensión sea `.pdf`, `.docx` o `.xlsx`, que el archivo no esté vacío (`0 bytes`) y que no supere el tamaño máximo permitido (`MAX_FILE_SIZE_MB`).
-2. **Encolado y Concurrencia (`InMemoryJobQueue` + `ExtractionWorker`):**
-   - `POST /api/v1/questionnaires/jobs` permite subir uno o varios documentos simultáneamente, encolándolos con estado `QUEUED` (`202 Accepted`).
-   - Un pool configurable de workers (`WORKER_CONCURRENCY`) consume la cola en segundo plano durante el `lifespan` de FastAPI, ejecutando la extracción documental en un hilo separado (`asyncio.to_thread`) y llamando al LLM de forma asíncrona sin bloquear el *event loop*.
-   - Además, se expone `POST /api/v1/questionnaires/extract` para extracción síncrona directa de un documento individual (`200 OK`).
-3. **Extracción Documental Especializada:**
-   - **`.pdf` (`PdfParser`):** Extrae el texto página por página y detecta documentos corruptos o PDFs en blanco/escaneados sin capa de texto.
-   - **`.docx` (`DocxParser`):** Extrae tanto los párrafos (`doc.paragraphs`) como las celdas de todas las tablas (`doc.tables`), indispensable para cuestionarios psicométricos donde las escalas Likert se maquetan en grillas tabulares.
-   - **`.xlsx` (`XlsxParser`):** Recorre todas las hojas del libro (`openpyxl`), ignorando filas y celdas vacías y preservando la estructura tabular.
-4. **Estructuración Garantizada con LLM (`GeminiExtractorAdapter`):**
-   - Utiliza Google Gemini (`google-genai`) en su capa gratuita (*Free Tier*) con `response_schema` y `temperature=0.0`, seguido de validación estricta en Pydantic v2.
 
 ---
 
-## 📋 Supuestos de Diseño e Interpretación Documentados
+## 🧠 Decisiones Técnicas y Supuestos Documentados
 
-Siguiendo la indicación de la prueba técnica (*"Ante cualquier duda de interpretación, documenta tu supuesto en el README y avanza"*), se adoptaron los siguientes supuestos de diseño:
+De acuerdo con la directriz del enunciado (*"Ante cualquier duda de interpretación, documenta tu supuesto en el README y avanza"*), se documentan los siguientes supuestos y decisiones de ingeniería:
 
-1. **Inferencia sin Etiquetas Explícitas:**
-   - Se asume que los documentos reales **no** incluyen metadatos explícitos como `"Idioma: es"` ni `"Tipo: escala_likert"`. El motor infiere automáticamente el código ISO 639-1 del idioma (`it`, `es`, `en`, etc.), el título del instrumento y la clasificación de cada ítem a partir de la estructura semántica del enunciado y sus opciones.
-2. **Representación de Ítems de `"emparejamiento"` (*Matching*):**
-   - Para mantener 100% uniforme el contrato `alternativas: [{ "valor": ..., "texto": ... }]` en cuestionarios con o sin respuestas marcadas, cada premisa de la Columna A se lista con su identificador numérico (`"valor": "1"`, `"2"`, `"3"`) y cada opción asociable de la Columna B se lista con su identificador alfabético (`"valor": "A"`, `"B"`, `"C"`). Si el documento incluye la solución, se consigna en `"respuesta_correcta"` como cadena de pares (ej. `"1-B, 2-A, 3-C"`); en caso contrario, es `null`.
-3. **Representación de Ítems de `"verdadero_falso"`:**
-   - Se estructuran con sus dos alternativas en el idioma original del documento (ej. `[{"valor": "V", "texto": "Vero"}, {"valor": "F", "texto": "Falso"}]` en italiano; `Verdadero/Falso` en español; `T/F` `True/False` en inglés) y `"respuesta_correcta"` toma el valor `"V"`, `"F"`, `"T"` o `null` según esté o no indicada en el documento.
-4. **Tipado de `"valor"` en `"escala_likert"` vs. otros tipos:**
-   - En ítems de tipo `"escala_likert"`, el validador de dominio normaliza `"valor"` a entero (`int`: `0, 1, 2, 3...`) y fija `"respuesta_correcta": null`. En `"seleccion_multiple"`, `"verdadero_falso"` y `"emparejamiento"`, `"valor"` se mantiene como cadena (`str`: `"A"`, `"B"`, `"C"`). En `"desarrollo"`, el validador garantiza siempre `"alternativas": []` y `"respuesta_correcta": null`.
-5. **Documentos sin Ítems Detectables (`NoItemsDetectedError`):**
-   - Si el usuario sube un archivo `.pdf`, `.docx` o `.xlsx` válido que contiene texto pero ningún ítem de cuestionario (por ejemplo, una carta o factura), el sistema responde con código HTTP `422 Unprocessable Entity` (`code: "NO_ITEMS_DETECTED"`).
+### 1. Inferencia Autónoma sin Etiquetas Artificiales en el Documento
+Los documentos reales en papel, Word o Excel **no** incluyen metadatos explícitos como `"Idioma: es"` ni `"Tipo: escala_likert"` junto a cada pregunta. El motor está diseñado para:
+- **Detectar el idioma (`idioma`):** Analizar el vocabulario y estructura gramatical del documento y devolver el código ISO 639-1 en minúsculas (`"it"`, `"es"`, `"en"`, `"pt"`, `"fr"`, etc.) conservando intacto el idioma original de los enunciados y alternativas (sin traducirlos).
+- **Inferir el título (`titulo`):** Extraer el encabezado principal del instrumento o inferir un título descriptivo en el idioma original cuando el documento comienza directamente con las preguntas.
+- **Clasificar el tipo de ítem (`tipo`):** Determinar automáticamente si una pregunta corresponde a `"escala_likert"`, `"seleccion_multiple"`, `"verdadero_falso"`, `"desarrollo"` o `"emparejamiento"` a partir del patrón de sus opciones o la ausencia de ellas.
+
+### 2. Modelado del Tipo `"emparejamiento"` (*Matching*)
+El esquema de ejemplo del desafío establece que `"alternativas"` tiene la estructura `[{ "valor": ..., "texto": ... }]`. Para soportar preguntas de **relacionar columnas** (`"emparejamiento"`) tanto en cuestionarios resueltos como en cuestionarios en blanco (sin respuestas marcadas):
+- Cada premisa de la **Columna A** se representa como una entrada en `"alternativas"` con su identificador numérico en `"valor"` (`"1"`, `"2"`, `"3"`) y su enunciado en `"texto"`.
+- Cada opción asociable de la **Columna B** se representa en `"alternativas"` con su identificador de letra en `"valor"` (`"A"`, `"B"`, `"C"`) y su descripción en `"texto"`.
+- Si el documento indica las asociaciones correctas, se registran en `"respuesta_correcta"` como una cadena estandarizada (ej. `"1-B, 2-C, 3-A"`); si no están indicadas, `"respuesta_correcta"` es `null`.
+
+```json
+{
+  "numero": 9,
+  "enunciado": "Associ ciascuna funzione cognitiva (1-3) alla descrizione corrispondente (A-C):",
+  "tipo": "emparejamiento",
+  "alternativas": [
+    { "valor": "1", "texto": "Memoria di lavoro" },
+    { "valor": "2", "texto": "Attenzione selettiva" },
+    { "valor": "3", "texto": "Controllo inibitorio" },
+    { "valor": "A", "texto": "Capacità di inibire risposte impulsive" },
+    { "valor": "B", "texto": "Mantenimento temporaneo ed elaborazione di dati" },
+    { "valor": "C", "texto": "Focalizzazione su uno stimolo ignorando i distrattori" }
+  ],
+  "respuesta_correcta": "1-B, 2-C, 3-A"
+}
+```
+
+### 3. Modelado de `"verdadero_falso"`, `"escala_likert"` y `"desarrollo"`
+- **`"escala_likert"`:** El validador `@model_validator(mode="after")` en `QuestionItemSchema` garantiza que el campo `"valor"` de cada alternativa sea un **entero (`int`)** (`0, 1, 2, 3...`) tal como en el ejemplo oficial en italiano del PDF, y que `"respuesta_correcta"` sea `null`. Si en un `.docx` o `.pdf` la escala Likert se define una sola vez en el encabezado de una tabla, se propaga automáticamente a cada afirmación de dicha tabla.
+- **`"verdadero_falso"`:** Se estructura con sus dos alternativas en el idioma del documento (ej. `Vero`/`Falso`, `Verdadero`/`Falso`, `True`/`False`) y `"respuesta_correcta"` igual a `"V"`, `"F"`, `"T"` o `null`.
+- **`"desarrollo"`:** El validador de dominio fuerza invariablemente `"alternativas": []` y `"respuesta_correcta": null`.
+- **Consistencia de `total_items`:** `QuestionnaireOutput` recalcula automáticamente `total_items = len(items)` tras validar la lista de preguntas.
+
+### 4. Resiliencia ante Picos de Demanda del Proveedor LLM
+El adaptador `GeminiExtractorAdapter` implementa una cadena de reintento y *fallback* automático entre modelos de la familia Flash en la capa gratuita (`gemini-3.5-flash-lite` $\rightarrow$ `gemini-3.1-flash-lite` $\rightarrow$ `gemini-3.7-flash` $\rightarrow$ `gemini-3.5-flash` $\rightarrow$ `gemini-2.5-flash`) ante respuestas transitorias `503 UNAVAILABLE` o `429`.
+
+---
+
+## 🔌 Especificación de Endpoints y Manejo de Errores
+
+### Endpoints Disponibles
+
+| Método | Ruta | Código Éxito | Descripción |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/v1/questionnaires/jobs` | `202 Accepted` | Recibe `1..N` archivos en el campo `files`, valida formato/tamaño y los encola para procesamiento asíncrono paralelo. |
+| `GET` | `/api/v1/questionnaires/jobs/{job_id}` | `200 OK` | Devuelve el estado del trabajo (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`) y el JSON en `result` al finalizar. |
+| `POST` | `/api/v1/questionnaires/extract` | `200 OK` | Recibe 1 archivo en el campo `file` y retorna directamente el JSON estandarizado (`QuestionnaireOutput`). |
+| `GET` | `/health` | `200 OK` | Verificación de salud del servicio (`{"status": "ok"}`). |
+
+### Códigos de Error Semánticos (`DomainError`)
+
+| Excepción de Dominio | Código Interno (`code`) | HTTP Status | Caso en que se dispara |
+| :--- | :--- | :---: | :--- |
+| `UnsupportedFileFormatError` | `UNSUPPORTED_FILE_FORMAT` | `400 Bad Request` | Extensión distinta de `.pdf`, `.docx` o `.xlsx`. |
+| `FileTooLargeError` | `FILE_TOO_LARGE` | `413 Content Too Large` | El archivo supera el límite configurado en `MAX_FILE_SIZE_MB`. |
+| `CorruptedDocumentError` | `CORRUPTED_DOCUMENT` | `422 Unprocessable Entity` | Archivo binario dañado o ilegible por el parser correspondiente. |
+| `EmptyDocumentError` | `EMPTY_DOCUMENT` | `422 Unprocessable Entity` | Archivo de 0 bytes, hoja de cálculo vacía o PDF sin texto extraíble. |
+| `NoItemsDetectedError` | `NO_ITEMS_DETECTED` | `422 Unprocessable Entity` | El documento contiene texto válido pero ningún ítem de cuestionario. |
+| `LLMExtractionError` | `LLM_EXTRACTION_ERROR` | `502 Bad Gateway` | Error de comunicación o configuración con el proveedor LLM. |
 
 ---
 
 ## ⚙️ Variables de Entorno
 
 ### Backend (`backend/.env`)
-Puedes copiar la plantilla desde `backend/.env.example`:
+Plantilla disponible en [`backend/.env.example`](./backend/.env.example):
 
-| Variable | Descripción | Valor por defecto |
-| :--- | :--- | :--- |
-| `GEMINI_API_KEY` | **(Requerido)** API Key gratuita de [Google AI Studio](https://aistudio.google.com/apikey) | — |
-| `GEMINI_MODEL` | Modelo Gemini a utilizar | `gemini-3.5-flash-lite` |
-| `APP_ENV` | Entorno de ejecución (`development` / `production`) | `development` |
-| `MAX_FILE_SIZE_MB` | Tamaño máximo permitido por archivo en MB | `20` |
-| `WORKER_CONCURRENCY` | Número de workers asíncronos procesando la cola en paralelo | `3` |
+```env
+APP_ENV=development
+GEMINI_API_KEY=tu_api_key_gratuita_de_google_ai_studio
+GEMINI_MODEL=gemini-3.5-flash-lite
+MAX_FILE_SIZE_MB=20
+WORKER_CONCURRENCY=3
+```
 
 ### Frontend (`frontend/.env.local`)
-Puedes copiar la plantilla desde `frontend/.env.example`:
+Plantilla disponible en [`frontend/.env.example`](./frontend/.env.example):
 
-| Variable | Descripción | Valor por defecto |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | URL base del Backend en FastAPI | `http://localhost:8000` |
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
 ---
 
-## 🚀 Instalación y Ejecución Local
+## 🚀 Instrucciones de Instalación y Ejecución Local
 
-### 1. Clonar el repositorio
+### Opción 1: Ejecución Instantánea con Docker Compose (Recomendada)
+
+Levanta el Backend (`:8000`) y el Frontend (`:3000`) con un solo comando:
+
 ```bash
 git clone <URL_DEL_REPOSITORIO>
 cd questionary_to_json
-```
 
-### Opción Rápida — Con Docker Compose (Levanta Backend + Frontend en 1 comando)
-```bash
 cp backend/.env.example backend/.env
 # Edita backend/.env y coloca tu GEMINI_API_KEY
+
 docker compose up --build
 ```
-- **Frontend:** `http://localhost:3000`
-- **Backend API & Swagger:** `http://localhost:8000/docs`
+- **Aplicación Web (Frontend):** [http://localhost:3000](http://localhost:3000)
+- **API & Swagger UI (Backend):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-### 2. Levantar el Backend Manualmente (FastAPI)
+### Opción 2: Ejecución Manual (Desarrollo Local)
 
-**Opción A — Usando `uv` (Recomendado):**
+#### 1. Iniciar el Backend (FastAPI)
+
+Usando **`uv`**:
 ```bash
 cd backend
 cp .env.example .env
-# Edita .env y coloca tu GEMINI_API_KEY
+# Agrega tu GEMINI_API_KEY en backend/.env
 uv sync
 uv run fastapi dev
 ```
 
-**Opción B — Usando `venv` + `pip` estándar:**
+O usando **`venv` + `pip` estándar**:
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edita .env y coloca tu GEMINI_API_KEY
+# Agrega tu GEMINI_API_KEY en backend/.env
 uvicorn app.main:app --reload --port 8000
 ```
-El Backend quedará disponible en `http://localhost:8000` (Swagger UI en `http://localhost:8000/docs`).
 
-### 3. Levantar el Frontend (Next.js)
-En otra terminal:
+#### 2. Iniciar el Frontend (Next.js)
+
+En una segunda terminal:
 ```bash
 cd frontend
 cp .env.example .env.local
 npm install
 npm run dev
 ```
-Abre `http://localhost:3000` en tu navegador.
+Accede a [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 🧪 Ejecución de Tests Automatizados (Pytest)
+## 🧪 Suite de Pruebas Automatizadas (Pytest)
 
-La suite cuenta con **32 pruebas automatizadas** que validan el esquema de salida (`test_schemas.py`), los validadores y parsers de archivos `.pdf`, `.docx` y `.xlsx` incluyendo casos corruptos/vacíos (`test_validators_and_parsers.py`), el adaptador LLM con mocks (`test_llm_extractor.py`) y los endpoints HTTP síncronos y asíncronos (`test_api.py`):
+El proyecto cuenta con **32 pruebas automatizadas** en `backend/tests/` que verifican:
+1. **`test_schemas.py` (10 tests):** Validación del JSON de ejemplo del PDF de Giunti, soporte de los 5 tipos de ítems, rechazo de tipos inválidos, coerción de enteros en `escala_likert`, limpieza de alternativas en `desarrollo` y recálculo automático de `total_items`.
+2. **`test_validators_and_parsers.py` (15 tests):** Rechazo de extensiones no soportadas (`.txt`, `.csv`, `.doc`, `.png`), archivos vacíos o que exceden el tamaño máximo, manejo de binarios corruptos en `.pdf`/`.docx`/`.xlsx`, extracción de párrafos y tablas en Word, hojas en Excel, páginas PDF y validación íntegra de la carpeta `/examples`.
+3. **`test_llm_extractor.py` (3 tests):** Extracción estructurada con mocks del cliente Gemini, detección de `NoItemsDetectedError` cuando el documento retorna `items: []` y manejo de fallos de API/configuración.
+4. **`test_api.py` (4 tests):** Pruebas de integración HTTP sobre `GET /health`, `POST /api/v1/questionnaires/extract`, mapeo de errores de dominio a códigos HTTP (`400`, `422`) y flujo asíncrono completo en `POST /api/v1/questionnaires/jobs` + `GET /api/v1/questionnaires/jobs/{job_id}`.
 
+Para ejecutar toda la suite:
 ```bash
 cd backend
 uv run pytest -v
@@ -162,10 +356,12 @@ uv run pytest -v
 
 ---
 
-## 📂 Archivos de Prueba (`/examples`)
+## 📁 Carpeta `/examples`
 
-En la carpeta [`/examples`](./examples) se incluyen **3 cuestionarios sintéticos de dominio público** (10 a 12 ítems cada uno, sin etiquetas artificiales de metadatos) junto con sus JSON estandarizados resultantes:
+En [`/examples`](./examples) se encuentran **3 cuestionarios sintéticos de dominio público** (de 10 a 12 ítems cada uno, sin etiquetas artificiales de idioma o tipo) junto con sus archivos `.json` resultantes:
 
-1. **`questionario_esempio_it.pdf` / `questionario_esempio_it.json`:** Cuestionario psicoactitudinal y cognitivo en **italiano (`it`)** de 10 ítems en 2 páginas.
-2. **`cuestionario_psicometrico_es.docx` / `cuestionario_psicometrico_es.json`:** Inventario de competencias laborales en **español (`es`)** de 12 ítems (incluye tabla de escala Likert, selección múltiple, verdadero/falso, emparejamiento y desarrollo).
-3. **`cognitive_assessment_en.xlsx` / `cognitive_assessment_en.json`:** Evaluación cognitiva y conductual en **inglés (`en`)** de 10 ítems en formato hoja de cálculo.
+| Archivo de Entrada | JSON Resultante | Idioma | Total Ítems | Tipos de Ítems Cubiertos |
+| :--- | :--- | :---: | :---: | :--- |
+| [`questionario_esempio_it.pdf`](./examples/questionario_esempio_it.pdf) | [`questionario_esempio_it.json`](./examples/questionario_esempio_it.json) | `it` | 10 | `escala_likert`, `seleccion_multiple`, `verdadero_falso`, `emparejamiento`, `desarrollo` |
+| [`cuestionario_psicometrico_es.docx`](./examples/cuestionario_psicometrico_es.docx) | [`cuestionario_psicometrico_es.json`](./examples/cuestionario_psicometrico_es.json) | `es` | 12 | Tabla `escala_likert`, `seleccion_multiple`, `verdadero_falso`, `emparejamiento`, `desarrollo` |
+| [`cognitive_assessment_en.xlsx`](./examples/cognitive_assessment_en.xlsx) | [`cognitive_assessment_en.json`](./examples/cognitive_assessment_en.json) | `en` | 10 | Hoja de cálculo con `escala_likert`, `seleccion_multiple`, `verdadero_falso`, `emparejamiento`, `desarrollo` |
