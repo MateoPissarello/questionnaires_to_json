@@ -1,7 +1,7 @@
 # ==============================================================================
 # Etapa 1: Compilación estática del Frontend (Next.js -> /frontend/out)
 # ==============================================================================
-FROM node:22-alpine AS frontend-builder
+FROM node:22-slim AS frontend-builder
 
 WORKDIR /frontend
 
