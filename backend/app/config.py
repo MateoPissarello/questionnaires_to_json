@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     gemini_api_key: str = "gemini_api_key"
-    gemini_model: str = "gemini_model"
+    gemini_model: str = "gemini-3.5-flash-lite"
     max_file_size_mb: int = 20
     worker_concurrency: int = 3
 
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> "Settings":
     """
     Get the application settings, cached for performance.

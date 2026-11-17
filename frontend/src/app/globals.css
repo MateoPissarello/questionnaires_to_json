@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --surface-canvas: #f6f7f9;
+  --surface-panel: #ffffff;
+  --surface-subtle: #eef1f5;
+  --ink-primary: #111827;
+  --ink-secondary: #374151;
+  --ink-muted: #6b7280;
+  --border-hairline: #dde2ea;
+  --accent-primary: #1e3a8a;
+  --accent-hover: #172554;
+  --accent-surface: #eff6ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--surface-canvas);
+  color: var(--ink-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: #dbeafe;
+  color: #1e3a8a;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
