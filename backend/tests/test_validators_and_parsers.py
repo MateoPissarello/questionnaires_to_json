@@ -184,3 +184,32 @@ def test_pdf_parser_extracts_real_pdf_and_rejects_blank_pdf() -> None:
     extracted = service.parse_document(valid_pdf, "enunciado.pdf")
     assert "--- Page 1 ---" in extracted
     assert "Questionario di esempio - Item 1" in extracted
+
+
+def test_examples_folder_deliverables_are_valid() -> None:
+    """Verifica que los 3 documentos (.pdf, .docx, .xlsx) y sus .json en /examples sean válidos."""
+    from pathlib import Path
+    from app.domain.schemas import QuestionnaireOutput
+
+    examples_dir = Path(__file__).resolve().parents[2] / "examples"
+    service = ParserService()
+
+    expected_pairs = [
+        ("questionario_esempio_it.pdf", "questionario_esempio_it.json"),
+        ("cuestionario_psicometrico_es.docx", "cuestionario_psicometrico_es.json"),
+        ("cognitive_assessment_en.xlsx", "cognitive_assessment_en.json"),
+    ]
+
+    for doc_name, json_name in expected_pairs:
+        doc_path = examples_dir / doc_name
+        json_path = examples_dir / json_name
+        assert doc_path.exists(), f"Missing {doc_path}"
+        assert json_path.exists(), f"Missing {json_path}"
+
+        extracted_text = service.parse_document(doc_path.read_bytes(), doc_name)
+        assert len(extracted_text) > 50
+
+        validated_json = QuestionnaireOutput.model_validate_json(
+            json_path.read_text(encoding="utf-8")
+        )
+        assert validated_json.total_items == len(validated_json.items)

@@ -1,0 +1,222 @@
+{
+  "titulo": "Questionario di Valutazione Psicoattitudinale e Cognitiva",
+  "idioma": "it",
+  "total_items": 10,
+  "items": [
+    {
+      "numero": 1,
+      "enunciado": "Mi preoccupo eccessivamente per cose di poca importanza.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Mai"
+        },
+        {
+          "valor": 1,
+          "texto": "A volte"
+        },
+        {
+          "valor": 2,
+          "texto": "Spesso"
+        },
+        {
+          "valor": 3,
+          "texto": "Sempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 2,
+      "enunciado": "Riesco a mantenere la concentrazione anche in ambienti rumorosi.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Mai"
+        },
+        {
+          "valor": 1,
+          "texto": "A volte"
+        },
+        {
+          "valor": 2,
+          "texto": "Spesso"
+        },
+        {
+          "valor": 3,
+          "texto": "Sempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 3,
+      "enunciado": "Mi sento a mio agio nel prendere la parola davanti a un gruppo.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Mai"
+        },
+        {
+          "valor": 1,
+          "texto": "A volte"
+        },
+        {
+          "valor": 2,
+          "texto": "Spesso"
+        },
+        {
+          "valor": 3,
+          "texto": "Sempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 4,
+      "enunciado": "Pianifico in anticipo le attività della settimana lavorativa.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Mai"
+        },
+        {
+          "valor": 1,
+          "texto": "A volte"
+        },
+        {
+          "valor": 2,
+          "texto": "Spesso"
+        },
+        {
+          "valor": 3,
+          "texto": "Sempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 5,
+      "enunciado": "Quale numero completa la serie: 2, 4, 8, 16, ...?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "18"
+        },
+        {
+          "valor": "B",
+          "texto": "24"
+        },
+        {
+          "valor": "C",
+          "texto": "32"
+        }
+      ],
+      "respuesta_correcta": "C"
+    },
+    {
+      "numero": 6,
+      "enunciado": "Se tutti i quadrati sono rettangoli e nessun rettangolo è un cerchio, quale affermazione è sicuramente corretta?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Alcuni quadrati sono cerchi"
+        },
+        {
+          "valor": "B",
+          "texto": "Nessun quadrato è un cerchio"
+        },
+        {
+          "valor": "C",
+          "texto": "Tutti i rettangoli sono quadrati"
+        }
+      ],
+      "respuesta_correcta": "B"
+    },
+    {
+      "numero": 7,
+      "enunciado": "Quale tra i seguenti termini NON appartiene allo stesso gruppo semantico?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Violino"
+        },
+        {
+          "valor": "B",
+          "texto": "Violoncello"
+        },
+        {
+          "valor": "C",
+          "texto": "Contrabbasso"
+        },
+        {
+          "valor": "D",
+          "texto": "Flauto"
+        }
+      ],
+      "respuesta_correcta": "D"
+    },
+    {
+      "numero": 8,
+      "enunciado": "L'ascolto attivo richiede di interrompere l'interlocutore per correggerlo immediatamente.",
+      "tipo": "verdadero_falso",
+      "alternativas": [
+        {
+          "valor": "V",
+          "texto": "Vero"
+        },
+        {
+          "valor": "F",
+          "texto": "Falso"
+        }
+      ],
+      "respuesta_correcta": "F"
+    },
+    {
+      "numero": 9,
+      "enunciado": "Associ ciascuna funzione cognitiva (1-3) alla descrizione corrispondente (A-C):",
+      "tipo": "emparejamiento",
+      "alternativas": [
+        {
+          "valor": "1",
+          "texto": "Memoria di lavoro"
+        },
+        {
+          "valor": "2",
+          "texto": "Attenzione selettiva"
+        },
+        {
+          "valor": "3",
+          "texto": "Controllo inibitorio"
+        },
+        {
+          "valor": "A",
+          "texto": "Capacità di inibire risposte impulsive"
+        },
+        {
+          "valor": "B",
+          "texto": "Mantenimento temporaneo ed elaborazione di dati"
+        },
+        {
+          "valor": "C",
+          "texto": "Focalizzazione su uno stimolo ignorando i distrattori"
+        }
+      ],
+      "respuesta_correcta": "1-B, 2-C, 3-A"
+    },
+    {
+      "numero": 10,
+      "enunciado": "Descriva una situazione recente in cui si è sentito sotto pressione e il modo in cui ha gestito le priorità.",
+      "tipo": "desarrollo",
+      "alternativas": [],
+      "respuesta_correcta": null
+    }
+  ]
+}

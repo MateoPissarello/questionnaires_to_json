@@ -68,5 +68,6 @@ AGENTS.md
 .idea/
 *.swp
 *.swo
+.~lock.*
 .DS_Store
 Thumbs.db

@@ -1,0 +1,270 @@
+{
+  "titulo": "Inventario de Competencias Laborales y Razonamiento Aplicado",
+  "idioma": "es",
+  "total_items": 12,
+  "items": [
+    {
+      "numero": 1,
+      "enunciado": "Mantengo la calma cuando enfrento plazos ajustados o cambios imprevistos.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Nunca"
+        },
+        {
+          "valor": 1,
+          "texto": "Rara vez"
+        },
+        {
+          "valor": 2,
+          "texto": "A menudo"
+        },
+        {
+          "valor": 3,
+          "texto": "Siempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 2,
+      "enunciado": "Verifico dos veces la exactitud de los datos antes de entregar un informe.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Nunca"
+        },
+        {
+          "valor": 1,
+          "texto": "Rara vez"
+        },
+        {
+          "valor": 2,
+          "texto": "A menudo"
+        },
+        {
+          "valor": 3,
+          "texto": "Siempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 3,
+      "enunciado": "Escucho las opiniones de mis compañeros antes de proponer una solución definitiva.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Nunca"
+        },
+        {
+          "valor": 1,
+          "texto": "Rara vez"
+        },
+        {
+          "valor": 2,
+          "texto": "A menudo"
+        },
+        {
+          "valor": 3,
+          "texto": "Siempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 4,
+      "enunciado": "Me adapto con facilidad a nuevas herramientas digitales de trabajo.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Nunca"
+        },
+        {
+          "valor": 1,
+          "texto": "Rara vez"
+        },
+        {
+          "valor": 2,
+          "texto": "A menudo"
+        },
+        {
+          "valor": 3,
+          "texto": "Siempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 5,
+      "enunciado": "Organizo mis tareas diarias priorizando aquellas de mayor impacto.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Nunca"
+        },
+        {
+          "valor": 1,
+          "texto": "Rara vez"
+        },
+        {
+          "valor": 2,
+          "texto": "A menudo"
+        },
+        {
+          "valor": 3,
+          "texto": "Siempre"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 6,
+      "enunciado": "¿Cuál de las siguientes medidas estadísticas representa el valor central de un conjunto ordenado de datos?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Media aritmética"
+        },
+        {
+          "valor": "B",
+          "texto": "Mediana"
+        },
+        {
+          "valor": "C",
+          "texto": "Varianza"
+        },
+        {
+          "valor": "D",
+          "texto": "Desviación estándar"
+        }
+      ],
+      "respuesta_correcta": "B"
+    },
+    {
+      "numero": 7,
+      "enunciado": "Si un proyecto de 120 horas se reparte equitativamente entre 4 especialistas trabajando 6 horas diarias, ¿en cuántos días hábiles lo completarán?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "4 días"
+        },
+        {
+          "valor": "B",
+          "texto": "5 días"
+        },
+        {
+          "valor": "C",
+          "texto": "6 días"
+        },
+        {
+          "valor": "D",
+          "texto": "8 días"
+        }
+      ],
+      "respuesta_correcta": "B"
+    },
+    {
+      "numero": 8,
+      "enunciado": "¿Qué sesgo cognitivo consiste en buscar únicamente información que respalde nuestras creencias previas?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Efecto halo"
+        },
+        {
+          "valor": "B",
+          "texto": "Sesgo de anclaje"
+        },
+        {
+          "valor": "C",
+          "texto": "Sesgo de confirmación"
+        },
+        {
+          "valor": "D",
+          "texto": "Efecto Dunning-Kruger"
+        }
+      ],
+      "respuesta_correcta": "C"
+    },
+    {
+      "numero": 9,
+      "enunciado": "La validez de constructo evalúa si un instrumento mide efectivamente el concepto teórico para el cual fue diseñado.",
+      "tipo": "verdadero_falso",
+      "alternativas": [
+        {
+          "valor": "V",
+          "texto": "Verdadero"
+        },
+        {
+          "valor": "F",
+          "texto": "Falso"
+        }
+      ],
+      "respuesta_correcta": "V"
+    },
+    {
+      "numero": 10,
+      "enunciado": "Una correlación de Pearson igual a 0 indica una relación lineal perfecta entre dos variables.",
+      "tipo": "verdadero_falso",
+      "alternativas": [
+        {
+          "valor": "V",
+          "texto": "Verdadero"
+        },
+        {
+          "valor": "F",
+          "texto": "Falso"
+        }
+      ],
+      "respuesta_correcta": "F"
+    },
+    {
+      "numero": 11,
+      "enunciado": "Relacione cada dimensión del modelo de los Cinco Grandes (Big Five) con su rasgo característico:",
+      "tipo": "emparejamiento",
+      "alternativas": [
+        {
+          "valor": "1",
+          "texto": "Apertura a la experiencia"
+        },
+        {
+          "valor": "2",
+          "texto": "Responsabilidad"
+        },
+        {
+          "valor": "3",
+          "texto": "Amabilidad"
+        },
+        {
+          "valor": "A",
+          "texto": "Organización, autodisciplina y orientación al logro"
+        },
+        {
+          "valor": "B",
+          "texto": "Curiosidad intelectual, imaginación y creatividad"
+        },
+        {
+          "valor": "C",
+          "texto": "Cooperación, empatía y confianza hacia los demás"
+        }
+      ],
+      "respuesta_correcta": "1-B, 2-A, 3-C"
+    },
+    {
+      "numero": 12,
+      "enunciado": "Describa una situación profesional en la que tuvo que resolver un desacuerdo técnico dentro de su equipo y explique qué resultados obtuvo.",
+      "tipo": "desarrollo",
+      "alternativas": [],
+      "respuesta_correcta": null
+    }
+  ]
+}

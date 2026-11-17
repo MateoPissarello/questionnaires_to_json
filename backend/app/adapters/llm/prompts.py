@@ -45,11 +45,20 @@ The output MUST be in valid JSON format following the Questionnaire Output schem
    - "respuesta_correcta" MUST be null.
 
 5. "emparejamiento":
-   - A matching question where the respondent pairs elements from two lists/columns (premises and responses).
-   - Represent each matchable item or pair in "alternativas" with {"valor": "<identifier>", "texto": "<premise or pair text>"}.
-   - If the correct matching key is provided (e.g., "1-B, 2-A, 3-C"), set "respuesta_correcta" to that key string; otherwise null.
+   - A matching question where the respondent pairs elements from two lists/columns (e.g., premises 1, 2, 3 and responses A, B, C).
+   - Represent each element from both columns as a separate entry in "alternativas" using its identifier in "valor" (e.g., {"valor": "1", "texto": "Premise 1"}, {"valor": "2", "texto": "Premise 2"}, {"valor": "A", "texto": "Option A"}, {"valor": "B", "texto": "Option B"}).
+   - If the correct matching key is provided in the document (e.g., "1-B, 2-A, 3-C"), set "respuesta_correcta" to that string; otherwise null.
 
-### Critical Extraction Rules:
+### Critical Extraction & Inference Rules:
+- REAL-WORLD DOCUMENTS DO NOT CONTAIN METADATA LABELS: Real questionnaires will NOT say "Language: it" or "Type: escala_likert" or "(Open-ended)". You MUST infer:
+  1. "idioma": Detect the language automatically by analyzing the vocabulary and grammar of the statements (e.g., Italian -> "it", Spanish -> "es", English -> "en").
+  2. "titulo": Extract the main heading/header of the document, or infer a concise, natural title in the detected language if the document starts directly with questions.
+  3. "tipo": Infer the question type strictly from the structure of the statement and its options:
+     - Frequency/agreement scales (e.g., Mai/A volte/Spesso/Sempre, Nunca/A veces/Siempre, Strongly Disagree..Strongly Agree, 0-3 or 1-5 rating tables) -> "escala_likert".
+     - Questions with 3+ factual or conceptual choices (A, B, C, D) -> "seleccion_multiple".
+     - Statements with only two opposing truth options (Vero/Falso, Verdadero/Falso, True/False, V/F, T/F) -> "verdadero_falso".
+     - Prompts asking the respondent to describe, explain, justify, or write a free-text response with no options listed -> "desarrollo".
+     - Prompts asking to pair, relate, or match elements from two lists/columns -> "emparejamiento".
 - NEVER translate the text: keep "titulo", "enunciado", and "alternativas.texto" in the exact original language of the document.
 - Number items sequentially starting from 1 ("numero": 1, 2, 3...).
 - If the input text does NOT contain any questionnaire items or questions (e.g., it is a random article, contract, or invoice), return `"items": []` and NEVER invent questions.

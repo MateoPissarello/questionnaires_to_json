@@ -1,0 +1,222 @@
+{
+  "titulo": "Cognitive & Workplace Behavioral Assessment",
+  "idioma": "en",
+  "total_items": 10,
+  "items": [
+    {
+      "numero": 1,
+      "enunciado": "I feel energized when collaborating on complex problem-solving tasks with cross-functional teams.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Never"
+        },
+        {
+          "valor": 1,
+          "texto": "Rarely"
+        },
+        {
+          "valor": 2,
+          "texto": "Often"
+        },
+        {
+          "valor": 3,
+          "texto": "Always"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 2,
+      "enunciado": "I remain productive and focused even when project requirements evolve mid-sprint.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Never"
+        },
+        {
+          "valor": 1,
+          "texto": "Rarely"
+        },
+        {
+          "valor": 2,
+          "texto": "Often"
+        },
+        {
+          "valor": 3,
+          "texto": "Always"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 3,
+      "enunciado": "I proactively seek constructive feedback after completing a major milestone.",
+      "tipo": "escala_likert",
+      "alternativas": [
+        {
+          "valor": 0,
+          "texto": "Never"
+        },
+        {
+          "valor": 1,
+          "texto": "Rarely"
+        },
+        {
+          "valor": 2,
+          "texto": "Often"
+        },
+        {
+          "valor": 3,
+          "texto": "Always"
+        }
+      ],
+      "respuesta_correcta": null
+    },
+    {
+      "numero": 4,
+      "enunciado": "Which shape is the odd one out among the following geometric figures?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Triangle"
+        },
+        {
+          "valor": "B",
+          "texto": "Square"
+        },
+        {
+          "valor": "C",
+          "texto": "Circle"
+        },
+        {
+          "valor": "D",
+          "texto": "Hexagon"
+        }
+      ],
+      "respuesta_correcta": "C"
+    },
+    {
+      "numero": 5,
+      "enunciado": "If a server processes 240 requests in 12 seconds, how many requests will it process in 45 seconds at the same rate?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "720"
+        },
+        {
+          "valor": "B",
+          "texto": "850"
+        },
+        {
+          "valor": "C",
+          "texto": "900"
+        },
+        {
+          "valor": "D",
+          "texto": "960"
+        }
+      ],
+      "respuesta_correcta": "C"
+    },
+    {
+      "numero": 6,
+      "enunciado": "Which leadership style primarily focuses on empowering team autonomy and removing organizational roadblocks?",
+      "tipo": "seleccion_multiple",
+      "alternativas": [
+        {
+          "valor": "A",
+          "texto": "Autocratic leadership"
+        },
+        {
+          "valor": "B",
+          "texto": "Servant leadership"
+        },
+        {
+          "valor": "C",
+          "texto": "Transactional leadership"
+        },
+        {
+          "valor": "D",
+          "texto": "Laissez-faire leadership"
+        }
+      ],
+      "respuesta_correcta": "B"
+    },
+    {
+      "numero": 7,
+      "enunciado": "Divergent thinking primarily measures the ability to generate multiple creative solutions to an open problem.",
+      "tipo": "verdadero_falso",
+      "alternativas": [
+        {
+          "valor": "T",
+          "texto": "True"
+        },
+        {
+          "valor": "F",
+          "texto": "False"
+        }
+      ],
+      "respuesta_correcta": "T"
+    },
+    {
+      "numero": 8,
+      "enunciado": "Standard deviation can take negative values when the sample mean is below zero.",
+      "tipo": "verdadero_falso",
+      "alternativas": [
+        {
+          "valor": "T",
+          "texto": "True"
+        },
+        {
+          "valor": "F",
+          "texto": "False"
+        }
+      ],
+      "respuesta_correcta": "F"
+    },
+    {
+      "numero": 9,
+      "enunciado": "Match each memory system with its primary function:",
+      "tipo": "emparejamiento",
+      "alternativas": [
+        {
+          "valor": "1",
+          "texto": "Episodic memory"
+        },
+        {
+          "valor": "2",
+          "texto": "Semantic memory"
+        },
+        {
+          "valor": "3",
+          "texto": "Procedural memory"
+        },
+        {
+          "valor": "A",
+          "texto": "Motor skills and habits"
+        },
+        {
+          "valor": "B",
+          "texto": "Personal autobiographical events"
+        },
+        {
+          "valor": "C",
+          "texto": "General world knowledge and facts"
+        }
+      ],
+      "respuesta_correcta": "1-B, 2-C, 3-A"
+    },
+    {
+      "numero": 10,
+      "enunciado": "Briefly explain how you prioritize competing deadlines during a high-pressure week and how you communicate trade-offs to stakeholders.",
+      "tipo": "desarrollo",
+      "alternativas": [],
+      "respuesta_correcta": null
+    }
+  ]
+}
