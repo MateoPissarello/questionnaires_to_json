@@ -131,14 +131,9 @@ export default function WorkbenchPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded bg-[#1e3a8a] text-xs font-bold tracking-tight text-white">
               GP
             </div>
-            <div>
-              <h1 className="text-sm font-semibold tracking-tight text-[#111827]">
-                Giunti Psychometrics · Digitalizador de Cuestionarios
-              </h1>
-              <p className="text-[11px] text-[#6b7280]">
-                Convierte cuestionarios en PDF, Word o Excel a formato JSON estandarizado
-              </p>
-            </div>
+            <h1 className="text-sm font-semibold tracking-tight text-[#111827]">
+              Giunti Psychometrics · Digitalizador de Cuestionarios
+            </h1>
           </div>
         </div>
       </header>
