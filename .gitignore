@@ -1,0 +1,72 @@
+# ==========================================
+# Variables de Entorno y Secretos (NUNCA subir API Keys)
+# ==========================================
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ==========================================
+# Python / Backend (uv, pytest, FastAPI)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Caches de testing, linting y tipado
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ==========================================
+# Node.js / Next.js Frontend
+# ==========================================
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ==========================================
+# IDEs, Sistema Operativo y Bitácora Local
+# ==========================================
+LOGBOOK.md
+AGENTS.md
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
