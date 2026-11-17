@@ -4,13 +4,13 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.163%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Tests](https://img.shields.io/badge/Pytest-32%20passed-10B981?logo=pytest&logoColor=white)](#%EF%B8%8F-suite-de-pruebas-automatizadas-pytest)
+[![Tests](https://img.shields.io/badge/Pytest-32%20passed-10B981?logo=pytest&logoColor=white)](#suite-de-pruebas-automatizadas-pytest)
 
 Aplicación web full-stack diseñada para digitalizar y estructurar automáticamente cuestionarios psicométricos y evaluaciones educativas desde documentos **PDF (`.pdf`)**, **Word (`.docx`)** y **Excel (`.xlsx`)** hacia un esquema JSON estandarizado y validado.
 
 ---
 
-## 🌐 Demo Pública en Producción (Deploy)
+## Demo Pública en Producción (Deploy)
 
 | Componente | Plataforma | URL Pública |
 | :--- | :--- | :--- |
@@ -20,9 +20,9 @@ Aplicación web full-stack diseñada para digitalizar y estructurar automáticam
 
 ---
 
-## 🏛️ Arquitectura del Sistema
+## Arquitectura del Sistema
 
-El sistema está construido bajo los principios de **Arquitectura Hexagonal (Puertos y Adaptadores)** y **Procesamiento Asíncrono Desacoplado por Cola de Trabajos**. Esta separación garantiza que el núcleo de dominio (`domain/` y `services/`) sea 100% independiente del framework web, de las librerías de lectura binaria y del proveedor de IA.
+El sistema está construido bajo los principios de **Arquitectura Hexagonal (Puertos y Adaptadores)** y **Procesamiento Asíncrono Desacoplado por Cola de Trabajos**. Esta separación garantiza que el núcleo de dominio (`domain/` y `services/`) sea independiente del framework HTTP, de las librerías de lectura documental y del proveedor de LLM.
 
 ### 1. Diagrama de Componentes (Puertos y Adaptadores)
 
@@ -74,7 +74,7 @@ flowchart TB
 
 ### 2. Flujo de Procesamiento Asíncrono Concurrente (Cola + Workers)
 
-Para evitar bloqueos HTTP cuando el usuario carga múltiples cuestionarios extensos simultáneamente, el servidor gestiona una cola asíncrona (`InMemoryJobQueue`) consumida por un pool configurable de *workers* (`WORKER_CONCURRENCY`) inicializados durante el ciclo de vida (`lifespan`) de FastAPI:
+Para evitar bloqueos HTTP prolongados y permitir el procesamiento de varios documentos en paralelo, el servidor gestiona una cola asíncrona (`InMemoryJobQueue`) consumida por un pool configurable de *workers* (`WORKER_CONCURRENCY`) inicializados durante el ciclo de vida (`lifespan`) de FastAPI:
 
 ```mermaid
 sequenceDiagram
@@ -141,7 +141,7 @@ flowchart LR
 
 ---
 
-## 📂 Estructura del Monorepo
+## Estructura del Monorepo
 
 ```text
 questionary_to_json/
@@ -193,21 +193,31 @@ questionary_to_json/
 
 ---
 
-## 🧠 Decisiones Técnicas y Supuestos Documentados
+## Supuestos de Interpretación y Decisiones de Diseño
 
-De acuerdo con la directriz del enunciado (*"Ante cualquier duda de interpretación, documenta tu supuesto en el README y avanza"*), se documentan los siguientes supuestos y decisiones de ingeniería:
+De acuerdo con la indicación del documento de la prueba técnica (*"Ante cualquier duda de interpretación, documenta tu supuesto en el README y avanza"*), se detallan todos los supuestos funcionales y arquitectónicos adoptados:
 
-### 1. Inferencia Autónoma sin Etiquetas Artificiales en el Documento
-Los documentos reales en papel, Word o Excel **no** incluyen metadatos explícitos como `"Idioma: es"` ni `"Tipo: escala_likert"` junto a cada pregunta. El motor está diseñado para:
-- **Detectar el idioma (`idioma`):** Analizar el vocabulario y estructura gramatical del documento y devolver el código ISO 639-1 en minúsculas (`"it"`, `"es"`, `"en"`, `"pt"`, `"fr"`, etc.) conservando intacto el idioma original de los enunciados y alternativas (sin traducirlos).
-- **Inferir el título (`titulo`):** Extraer el encabezado principal del instrumento o inferir un título descriptivo en el idioma original cuando el documento comienza directamente con las preguntas.
-- **Clasificar el tipo de ítem (`tipo`):** Determinar automáticamente si una pregunta corresponde a `"escala_likert"`, `"seleccion_multiple"`, `"verdadero_falso"`, `"desarrollo"` o `"emparejamiento"` a partir del patrón de sus opciones o la ausencia de ellas.
+### 1. Sin Persistencia en Base de Datos (Procesamiento Efímero en Memoria)
+El enunciado de la prueba técnica solicita subir un documento, procesarlo y visualizar o descargar el JSON estandarizado resultante, sin requerir historial permanente, cuentas de usuario ni almacenamiento de cuestionarios a largo plazo. Por lo tanto, se asumió que **no es necesaria una base de datos persistente**:
+- Los trabajos de extracción y sus estados (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`) se gestionan en memoria mediante `InMemoryJobQueue` durante la ejecución del servicio.
+- Al estar desacoplada a través del contrato `JobQueuePort` (`app/domain/ports.py`), la arquitectura permite reemplazar la cola en memoria por un adaptador persistente (como Redis, PostgreSQL o AWS SQS + DynamoDB) sin modificar los servicios ni los endpoints.
 
-### 2. Modelado del Tipo `"emparejamiento"` (*Matching*)
-El esquema de ejemplo del desafío establece que `"alternativas"` tiene la estructura `[{ "valor": ..., "texto": ... }]`. Para soportar preguntas de **relacionar columnas** (`"emparejamiento"`) tanto en cuestionarios resueltos como en cuestionarios en blanco (sin respuestas marcadas):
-- Cada premisa de la **Columna A** se representa como una entrada en `"alternativas"` con su identificador numérico en `"valor"` (`"1"`, `"2"`, `"3"`) y su enunciado en `"texto"`.
-- Cada opción asociable de la **Columna B** se representa en `"alternativas"` con su identificador de letra en `"valor"` (`"A"`, `"B"`, `"C"`) y su descripción en `"texto"`.
-- Si el documento indica las asociaciones correctas, se registran en `"respuesta_correcta"` como una cadena estandarizada (ej. `"1-B, 2-C, 3-A"`); si no están indicadas, `"respuesta_correcta"` es `null`.
+### 2. Procesamiento por Cola Asíncrona + Endpoint Síncrono Directo
+Dado que la extracción de documentos extensos mediante un LLM puede tomar varios segundos y un usuario puede requerir procesar varios archivos simultáneamente:
+- Se diseñó un flujo asíncrono basado en cola (`POST /api/v1/questionnaires/jobs` y `GET /api/v1/questionnaires/jobs/{job_id}`) con un pool de *workers* concurrentes para procesar múltiples documentos en paralelo sin bloquear las peticiones HTTP.
+- Adicionalmente, se mantuvo el endpoint síncrono `POST /api/v1/questionnaires/extract` que recibe un archivo y retorna directamente el JSON final en una sola llamada HTTP para facilitar pruebas directas desde Swagger UI, Postman o scripts automatizados.
+
+### 3. Inferencia Autónoma sin Etiquetas Explícitas en el Documento
+Se asume que los documentos reales **no** traen etiquetas de metadatos indicando el idioma (`"Idioma: es"`), el título explícito (`"Título: ..."`) ni el tipo de cada pregunta (`"Tipo: escala_likert"`):
+- **Idioma (`idioma`):** Se detecta automáticamente a partir del vocabulario y la gramática del texto extraído, retornando su código ISO 639-1 de 2 letras en minúsculas (`"it"`, `"es"`, `"en"`, etc.) y preservando siempre el idioma original de los enunciados y alternativas sin traducirlos.
+- **Título (`titulo`):** Se extrae del encabezado principal del documento o de la pestaña de cálculo; si el documento inicia directamente con las preguntas sin título visible, se infiere un título descriptivo en el idioma detectado.
+- **Tipo de ítem (`tipo`):** Se deduce automáticamente analizando la estructura del enunciado y sus opciones de respuesta (escalas graduadas de frecuencia/acuerdo $\rightarrow$ `escala_likert`; opciones discretas A/B/C/D $\rightarrow$ `seleccion_multiple`; enunciados dicotómicos V/F o T/F $\rightarrow$ `verdadero_falso`; consignas de asociar dos listas/columnas $\rightarrow$ `emparejamiento`; preguntas abiertas sin opciones $\rightarrow$ `desarrollo`).
+
+### 4. Representación del Tipo `"emparejamiento"` (*Matching*)
+El documento de la prueba solicita identificar ítems de tipo `"emparejamiento"` manteniendo el esquema uniforme `alternativas: [{ "valor": ..., "texto": ... }]`. Como un cuestionario real puede venir sin respuestas resueltas (en blanco para ser administrado), no se deben fusionar previamente las columnas si no existe clave de corrección. Por ello:
+- Cada premisa de la **Columna A** se incluye en `"alternativas"` con su identificador numérico en `"valor"` (`"1"`, `"2"`, `"3"`) y su texto en `"texto"`.
+- Cada opción asociable de la **Columna B** se incluye en `"alternativas"` con su identificador de letra en `"valor"` (`"A"`, `"B"`, `"C"`) y su texto en `"texto"`.
+- Si el documento incluye la clave de emparejamiento correcta, se consigna en `"respuesta_correcta"` como cadena de pares (ej. `"1-B, 2-C, 3-A"`); si no está indicada en el documento, `"respuesta_correcta"` es `null`.
 
 ```json
 {
@@ -226,18 +236,22 @@ El esquema de ejemplo del desafío establece que `"alternativas"` tiene la estru
 }
 ```
 
-### 3. Modelado de `"verdadero_falso"`, `"escala_likert"` y `"desarrollo"`
-- **`"escala_likert"`:** El validador `@model_validator(mode="after")` en `QuestionItemSchema` garantiza que el campo `"valor"` de cada alternativa sea un **entero (`int`)** (`0, 1, 2, 3...`) tal como en el ejemplo oficial en italiano del PDF, y que `"respuesta_correcta"` sea `null`. Si en un `.docx` o `.pdf` la escala Likert se define una sola vez en el encabezado de una tabla, se propaga automáticamente a cada afirmación de dicha tabla.
-- **`"verdadero_falso"`:** Se estructura con sus dos alternativas en el idioma del documento (ej. `Vero`/`Falso`, `Verdadero`/`Falso`, `True`/`False`) y `"respuesta_correcta"` igual a `"V"`, `"F"`, `"T"` o `null`.
-- **`"desarrollo"`:** El validador de dominio fuerza invariablemente `"alternativas": []` y `"respuesta_correcta": null`.
-- **Consistencia de `total_items`:** `QuestionnaireOutput` recalcula automáticamente `total_items = len(items)` tras validar la lista de preguntas.
+### 5. Representación de `"verdadero_falso"`, `"escala_likert"` y `"desarrollo"`
+- **`"escala_likert"`:** En concordancia con el ejemplo del PDF, los valores de `"alternativas"` en escalas Likert se normalizan siempre a enteros (`int`: `0, 1, 2, 3...`) mediante un validador `@model_validator(mode="after")` en Pydantic v2, y `"respuesta_correcta"` es `null`. Cuando un documento `.docx` o `.pdf` presenta varios ítems Likert dentro de una tabla donde la escala solo se nombra en el encabezado, el extractor propaga dichas alternativas a cada ítem de la tabla.
+- **`"verdadero_falso"`:** Se estructura con sus dos alternativas en el idioma original del documento (`Vero`/`Falso` en italiano, `Verdadero`/`Falso` en español, `True`/`False` en inglés) y `"respuesta_correcta"` toma el identificador correspondiente (`"V"`, `"F"`, `"T"`) si está indicado, o `null` en caso contrario.
+- **`"desarrollo"`:** El validador del modelo fuerza siempre `"alternativas": []` y `"respuesta_correcta": null`.
+- **Autocálculo de `total_items`:** El modelo `QuestionnaireOutput` recalcula `total_items = len(items)` para garantizar que el conteo declarado coincida siempre con la cantidad real de ítems extraídos.
 
-### 4. Resiliencia ante Picos de Demanda del Proveedor LLM
-El adaptador `GeminiExtractorAdapter` implementa una cadena de reintento y *fallback* automático entre modelos de la familia Flash en la capa gratuita (`gemini-3.5-flash-lite` $\rightarrow$ `gemini-3.1-flash-lite` $\rightarrow$ `gemini-3.7-flash` $\rightarrow$ `gemini-3.5-flash` $\rightarrow$ `gemini-2.5-flash`) ante respuestas transitorias `503 UNAVAILABLE` o `429`.
+### 6. Documentos Digitales vs. Escaneos sin Capa de Texto y Documentos sin Ítems
+- Se asume que los archivos `.pdf`, `.docx` y `.xlsx` contienen texto digital o tablas extraíbles (sin requerir OCR óptico sobre imágenes). Si se sube un PDF compuesto únicamente por imágenes escaneadas en blanco o sin texto seleccionable, el parser lanza `EmptyDocumentError` (`422 Unprocessable Entity`).
+- Si se sube un documento válido con texto pero que **no corresponde a un cuestionario** (por ejemplo, una factura comercial o un texto informativo sin preguntas), el sistema detecta `0` ítems y lanza `NoItemsDetectedError` (`422 Unprocessable Entity`).
+
+### 7. Fallback Automático entre Modelos Free Tier
+Para mitigar picos de demanda (`503 UNAVAILABLE` o `429`) en la capa gratuita de Google AI Studio, `GeminiExtractorAdapter` implementa reintentos automáticos con *fallback* ordenado entre modelos gratuitos de la familia Flash (`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-3.7-flash`, `gemini-3.5-flash`, `gemini-2.5-flash`).
 
 ---
 
-## 🔌 Especificación de Endpoints y Manejo de Errores
+## Especificación de Endpoints y Manejo de Errores
 
 ### Endpoints Disponibles
 
@@ -261,7 +275,7 @@ El adaptador `GeminiExtractorAdapter` implementa una cadena de reintento y *fall
 
 ---
 
-## ⚙️ Variables de Entorno
+## Variables de Entorno
 
 ### Backend (`backend/.env`)
 Plantilla disponible en [`backend/.env.example`](./backend/.env.example):
@@ -283,9 +297,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-## 🚀 Instrucciones de Instalación y Ejecución Local
+## Instrucciones de Instalación y Ejecución Local
 
-### Opción 1: Ejecución Instantánea con Docker Compose (Recomendada)
+### Opción 1: Ejecución con Docker Compose (Recomendada)
 
 Levanta el Backend (`:8000`) y el Frontend (`:3000`) con un solo comando:
 
@@ -340,7 +354,7 @@ Accede a [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 🧪 Suite de Pruebas Automatizadas (Pytest)
+## Suite de Pruebas Automatizadas (Pytest)
 
 El proyecto cuenta con **32 pruebas automatizadas** en `backend/tests/` que verifican:
 1. **`test_schemas.py` (10 tests):** Validación del JSON de ejemplo del PDF de Giunti, soporte de los 5 tipos de ítems, rechazo de tipos inválidos, coerción de enteros en `escala_likert`, limpieza de alternativas en `desarrollo` y recálculo automático de `total_items`.
@@ -356,7 +370,7 @@ uv run pytest -v
 
 ---
 
-## 📁 Carpeta `/examples`
+## Carpeta `/examples`
 
 En [`/examples`](./examples) se encuentran **3 cuestionarios sintéticos de dominio público** (de 10 a 12 ítems cada uno, sin etiquetas artificiales de idioma o tipo) junto con sus archivos `.json` resultantes:
 
